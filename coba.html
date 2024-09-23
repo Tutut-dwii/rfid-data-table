@@ -170,7 +170,7 @@
         // Fungsi untuk fetch data dari server
         async function fetchRFIDData() {
             try {
-                const response = await fetch('http://localhost:3000/api/rfid_logs');
+                const response = await fetch('http://103.156.113.98:3000/api/rfid_logs');
                 const data = await response.json();
                 fetchedData = data;
                 displayPage(fetchedData, currentPage);
