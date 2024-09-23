@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RFID Data Table</title>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            transition: background-color 0.5s;
+            background-image: url('backgroundweb.jpg');
+            background-size: cover;
+            background-position: center;
+            color: #fff;
+            text-align: center;
+            position: relative;
+        }
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(171, 168, 168, 0.6);
+            z-index: -1;
+        }
+        h1 {
+            color: #fff;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.5);
+        }
+        #tanggal, #clock {
+            font-size: 1.5em;
+            color: #f8f8f8;
+            margin-right: 20px;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
+        }
+        table {
+            width: 90%;
+            max-width: 1000px;
+            border-collapse: collapse;
+            margin: 20px auto;
+            background-color: rgba(255, 255, 255, 0.8); 
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.3);
+        }
+        th, td {
+            padding: 16px 20px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+            font-size: 1.1em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        tr:nth-child(even) {
+            background-color: rgba(0, 191, 255, 0.2);
+        }
+        tr:hover {
+            background-color: #f0a500;
+            color: #fff;
+        }
+        footer {
+            margin-top: 20px;
+            color: #fff;
+            font-size: 0.9em;
+            text-align: center;
+        }
+        #pagination {
+            margin: 20px 0;
+        }
+        .toggle-mode {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #333;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .dark-mode {
+            background-color: #1a1a1a;
+            color: #161515;
+        }
+    </style>
+</head>
+<body>
+    <h1>RFID Data Table</h1>
+    <div id="tanggal"></div>
+    <div id="clock"></div>
+
+    <button class="toggle-mode" onclick="toggleDarkMode()">Dark/Light</button>
+    
+    <table border="1" cellspacing="0" cellpadding="3"> 
+        <thead>
+            <tr>
+                <th onclick="sortTable(0)">ID</th>
+                <th onclick="sortTable(1)">RFID</th>
+                <th onclick="sortTable(2)">Timestamp</th> 
+            </tr>
+        </thead>
+        <tbody id="rfidTableBody">
+            <!-- Data akan ditambahkan di sini oleh JavaScript -->
+        </tbody>
+    </table>
+    
+    <!-- Navigation for pages -->
+    <div id="pagination">
+        <button id="prevPage" onclick="prevPage()">Previous</button>
+        <span id="pageNumber">Page 1</span>
+        <button id="nextPage" onclick="nextPage()">Next</button>
+
+        <!-- Dropdown for selecting page -->
+        <select id="pageDropdown" onchange="selectPage()">
+            <!-- Options akan diisi oleh JavaScript -->
+        </select>
+    </div>
+
+    <footer>
+        <p>&copy; 2024 RFID Data Management System</p>
+    </footer>
+
+    <script>
+        let currentPage = 1;
+        const rowsPerPage = 15;
+        let fetchedData = [];
+
+        // Fungsi untuk memperbarui tanggal
+        function updateTanggal() {
+            const tanggalElement = document.getElementById('tanggal');
+            const now = new Date();
+            const tanggalFormatted = now.getDate() + '-' + (now.getMonth() + 1) + '-' + now.getFullYear();
+            tanggalElement.textContent = tanggalFormatted;
+        }
+
+        // Fungsi untuk memperbarui jam
+        function updateClock() {
+            const clockElement = document.getElementById('clock');
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            clockElement.textContent = `${hours}:${minutes}:${seconds}`;
+        }
+
+        // Panggil update tanggal dan jam setiap detik
+        setInterval(updateTanggal, 1000);
+        setInterval(updateClock, 1000);
+        updateTanggal();
+        updateClock();
+
+
+        function refreshTable() {
+        fetchRFIDData(); // Mengambil ulang data dari server
+        }
+        // Fungsi untuk fetch data dari server
+        async function fetchRFIDData() {
+            try {
+                const response = await fetch('http://localhost:3000/api/rfid_logs');
+                const data = await response.json();
+                fetchedData = data;
+                displayPage(fetchedData, currentPage);
+                updatePageDropdown();
+            } catch (error) {
+                console.error('Gagal mengambil data dari server:', error);
+            }
+        }
+
+        // Format timestamp
+        function formatTimestamp(timestamp) {
+            const date = new Date(timestamp);
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const seconds = String(date.getSeconds()).padStart(2, '0');
+            return `${day}-${month}-${year} ${hours}:${minutes}:${seconds}`;
+        }
+
+        // Fungsi untuk menampilkan halaman
+        function displayPage(data, page) {
+            const tableBody = document.getElementById('rfidTableBody');
+            tableBody.innerHTML = '';
+            const start = (page - 1) * rowsPerPage;
+            const end = start + rowsPerPage;
+            const pageData = data.slice(start, end);
+
+            if (pageData.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="3">No data available</td></tr>';
+            } else {
+                pageData.forEach((item) => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${item.id}</td>
+                        <td>${item.Tag}</td>
+                        <td>${formatTimestamp(item.timestamp)}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            }
+
+            document.getElementById('pageNumber').textContent = `Page ${page}`;
+        }
+
+        // Fungsi untuk navigasi halaman
+        function nextPage() {
+            const totalPages = Math.ceil(fetchedData.length / rowsPerPage);
+            if (currentPage < totalPages) {
+                currentPage++;
+                displayPage(fetchedData, currentPage);
+                updatePageDropdown();
+            }
+        }
+
+        function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                displayPage(fetchedData, currentPage);
+                updatePageDropdown();
+            }
+        }
+
+        // Fungsi untuk mengupdate dropdown halaman
+        function updatePageDropdown() {
+            const totalPages = Math.ceil(fetchedData.length / rowsPerPage);
+            const dropdown = document.getElementById('pageDropdown');
+            dropdown.innerHTML = ''; // Bersihkan dropdown
+            for (let i = 1; i <= totalPages; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = `Page ${i}`;
+                dropdown.appendChild(option);
+            }
+            dropdown.value = currentPage; // Set nilai dropdown ke halaman saat ini
+        }
+
+        // Fungsi untuk memilih halaman dari dropdown
+        function selectPage() {
+            const dropdown = document.getElementById('pageDropdown');
+            currentPage = parseInt(dropdown.value);
+            displayPage(fetchedData, currentPage);
+        }
+
+        // Dark/Light Mode Toggle
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+        }
+        setInterval(refreshTable, 1000); 
+        // Fetch data saat halaman dimuat
+        document.addEventListener('DOMContentLoaded', fetchRFIDData);
+    </script>
+</body>
+</html>
